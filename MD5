@@ -1,0 +1,14 @@
+3b8482d1eb68381c6262f5a8c8f6b644 *DESCRIPTION
+4c91ec02a659ffef9cdb9267cf589a5c *NAMESPACE
+abb0a335ad155df0570b5658f591cc27 *R/KnockoffTrio.R
+1cb8d3ee23b76500b3eb759ff7874777 *R/causal_loci.R
+699f5888899ed835dd4192a6e5cf31f1 *R/create_knockoff.R
+6935772ee72578bee8fe4b5921b74b9a *R/data.R
+6cb7e4a620af663b57716cfe046caddb *R/meta_analysis.R
+baf7b3cc4072a61902b03d734474b02d *README.md
+38f473baef6b5e944e605537c13c5304 *data/KnockoffTrio.example.rda
+849c8624cebd5117f52ff55ac892f9a5 *man/KnockoffTrio.Rd
+b8f8148e500b14e4b3fbacc4ff7b4df7 *man/KnockoffTrio.example.Rd
+50edaaee005f41ce04c4bd168d206984 *man/causal_loci.Rd
+d62d76b93762b2c4cdbf4caf38c7a9f9 *man/create_knockoff.Rd
+4ee3c6dcbd9300ecfd4054c944c2db28 *man/meta_analysis.Rd
