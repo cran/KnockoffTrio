@@ -401,8 +401,9 @@ MK.statistic<-function (T_0,T_k,method='median'){
   return(cbind(kappa,tau))
 }
 getslidingwindow<-function(left,right,size,pos){
+  if (size<=0) stop("The size of sliding window must be a positive number.")
   start<-end<-n<-ind3<-ind4<-c()
-  step<-round(size/2) #move half of the window size each time
+  step<-ceiling(size/2) #move half of the window size each time
   l<-left-step
   r<-l+size-1
   while (r<=(right+step)){

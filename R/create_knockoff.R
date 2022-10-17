@@ -86,9 +86,10 @@ create_knockoff_parent<-function(X,pos,M=10,corr_max=0.75,maxN.neighbor=Inf,maxB
   X_k<-array(0,dim=c(nrow(X),ncol(X),M));index.exist<-c()
   for (k in unique(clusters)){
     cluster.fitted<-cluster.residuals<-matrix(NA,nrow(X),sum(clusters==k))
-    for(i in which(clusters==k)){
+    indk<-which(clusters==k)
+    for(i in indk){
       index.pos<-which(pos>=max(pos[i]-maxBP.neighbor,pos[1]) & pos<=min(pos[i]+maxBP.neighbor,pos[length(pos)]))
-      temp<-abs(cor.X[i,]);temp[which(clusters==k)]<-0;temp[-index.pos]<-0
+      temp<-abs(cor.X[i,]);temp[indk]<-0;temp[-index.pos]<-0
 
       index<-order(temp,decreasing=T)
       index<-setdiff(index[1:min(length(index),sum(temp>0.05),floor((nrow(X))^(1/3)),maxN.neighbor)],i)
@@ -132,14 +133,14 @@ create_knockoff_parent<-function(X,pos,M=10,corr_max=0.75,maxN.neighbor=Inf,maxB
         }
       }
       residuals<-y-fitted.values
-      cluster.fitted[,match(i,which(clusters==k))]<-as.vector(fitted.values)
-      cluster.residuals[,match(i,which(clusters==k))]<-as.vector(residuals)
+      cluster.fitted[,match(i,indk)]<-as.vector(fitted.values)
+      cluster.residuals[,match(i,indk)]<-as.vector(residuals)
 
       index.exist<-c(index.exist,i)
     }
     cluster.sample.index<-sapply(1:M,function(x)sample(1:nrow(X)))
     for(j in 1:M){
-      X_k[,which(clusters==k),j]<-cluster.fitted+cluster.residuals[cluster.sample.index[,j],,drop=F]
+      X_k[,indk,j]<-cluster.fitted+cluster.residuals[cluster.sample.index[,j],,drop=F]
     }
   }
   return(X_k)
