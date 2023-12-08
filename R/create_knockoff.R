@@ -15,14 +15,14 @@
 #' @examples
 #' data(KnockoffTrio.example)
 #' dat.ko<-create_knockoff(KnockoffTrio.example$dat.hap,KnockoffTrio.example$pos,M=10)
-create_knockoff<-function(dat.hap,pos,M=10,maxcor=0.7,maxbp=80000,phasing.dad=NA,phasing.mom=NA){
+create_knockoff<-function(dat.hap,pos,M=10,maxcor=0.7,maxbp=80000,phasing.dad=NULL,phasing.mom=NULL){
   if (nrow(dat.hap) %% 6!=0) stop("The number of rows of the input haplotype matrix must be a multiple of six")
   if (!all(dat.hap %in% c(0,1))) stop("The input haplotype matrix can only contain 0 or 1.")
   n<-nrow(dat.hap)/6 #number of trios
   nsnp<-ncol(dat.hap) #number of variants
 
   ind.hap.off<-c((1:n)*6-1,(1:n)*6)
-  if (is.na(phasing.dad) | is.na(phasing.mom)){
+  if (is.null(phasing.dad) | is.null(phasing.mom)){
     phasing<-get_phasing(dat.hap)
     phasing.dad<-phasing$phasing.dad
     phasing.mom<-phasing$phasing.mom

@@ -1,8 +1,8 @@
-595ded76e2939c539657c9b881e1e348 *DESCRIPTION
+171f37d791b6b750d7569b3235ae3ca5 *DESCRIPTION
 4c91ec02a659ffef9cdb9267cf589a5c *NAMESPACE
 c5123294b8640d9189777bb1c6f284cb *R/KnockoffTrio.R
 1cb8d3ee23b76500b3eb759ff7874777 *R/causal_loci.R
-068fbaa75816a73df8f91dcf4c9454da *R/create_knockoff.R
+e1bc311b145d28ec75c8f94d6ec6979f *R/create_knockoff.R
 6935772ee72578bee8fe4b5921b74b9a *R/data.R
 6cb7e4a620af663b57716cfe046caddb *R/meta_analysis.R
 baf7b3cc4072a61902b03d734474b02d *README.md
@@ -10,5 +10,5 @@ baf7b3cc4072a61902b03d734474b02d *README.md
 849c8624cebd5117f52ff55ac892f9a5 *man/KnockoffTrio.Rd
 b8f8148e500b14e4b3fbacc4ff7b4df7 *man/KnockoffTrio.example.Rd
 50edaaee005f41ce04c4bd168d206984 *man/causal_loci.Rd
-d62d76b93762b2c4cdbf4caf38c7a9f9 *man/create_knockoff.Rd
+519ed45fc96127381d455a34b80f53f2 *man/create_knockoff.Rd
 4ee3c6dcbd9300ecfd4054c944c2db28 *man/meta_analysis.Rd

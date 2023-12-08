@@ -10,8 +10,8 @@ create_knockoff(
   M = 10,
   maxcor = 0.7,
   maxbp = 80000,
-  phasing.dad = NA,
-  phasing.mom = NA
+  phasing.dad = NULL,
+  phasing.mom = NULL
 )
 }
 \arguments{
