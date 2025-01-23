@@ -3,18 +3,20 @@
 #' Meta-analysis for KnockoffTrio
 #'
 #' @param window A list of windows for the analysis results from different cohorts/studies.
-#' @param n A positive integer vector for the number of trios in each cohort/study. For weighted meta-analysis, a study's weight is based on the number of trios. The default is NA for unweighted meta-analysis.
+#' @param n A positive integer vector for the number of families in each cohort/study. For weighted meta-analysis, a study's weight is based on the number of families. The default is NA for unweighted meta-analysis.
 #' @param M A positive integer for the number of knockoffs. The default is 10.
 #' @return A data frame for the meta-analysis results.
 #' @importFrom stats as.dist cutree hclust median pcauchy pnorm princomp
 #' @export
 #' @examples
 #' data(KnockoffTrio.example)
-#' dat.ko<-create_knockoff(KnockoffTrio.example$dat.hap,KnockoffTrio.example$pos,M=10)
-#' window<-data.matrix(KnockoffTrio(KnockoffTrio.example$dat,dat.ko,KnockoffTrio.example$pos))
+#' knockoff<-create_knockoff(trio.hap=KnockoffTrio.example$trio.hap,
+#'           duo.hap=KnockoffTrio.example$duo.hap, pos=KnockoffTrio.example$pos, M=10)
+#' window<-KnockoffTrio(trio=KnockoffTrio.example$trio, trio.ko=knockoff$trio.ko,
+#'         duo=knockoff$duo, duo.ko=knockoff$duo.ko, pos=KnockoffTrio.example$pos)
 #' window.list<-list(window,window)
 #' window.meta<-meta_analysis(window.list,M=10)
-#' result<-causal_loci(window.meta,M=10,fdr=0.15)
+#' result<-causal_loci(window.meta,M=10,fdr=0.1)
 meta_analysis<-function(window,n=NA,M=10){
   position<-c()
   nwin<-length(window)
@@ -29,8 +31,9 @@ meta_analysis<-function(window,n=NA,M=10){
   nvar<-length(position)
   ind<-vector(mode = "list", length = nwin)
   for (i in 1:nwin) ind[[i]]<-match(position,win[[i]])
-  out<-array(dim=c(nvar,ncol(window[[1]])))
-  colnames(out)<-colnames(window[[1]])
+  #out<-array(NA,dim=c(nvar,ncol(window[[1]])))
+  out<-window[[1]][-(1:nrow(window[[1]])),]
+  #colnames(out)<-colnames(window[[1]])
   coln<-paste0("z_",1:M)
   colnp<-paste0("p_",1:M)
   zcoln<-c("z",coln)

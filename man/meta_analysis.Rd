@@ -9,7 +9,7 @@ meta_analysis(window, n = NA, M = 10)
 \arguments{
 \item{window}{A list of windows for the analysis results from different cohorts/studies.}
 
-\item{n}{A positive integer vector for the number of trios in each cohort/study. For weighted meta-analysis, a study's weight is based on the number of trios. The default is NA for unweighted meta-analysis.}
+\item{n}{A positive integer vector for the number of families in each cohort/study. For weighted meta-analysis, a study's weight is based on the number of families. The default is NA for unweighted meta-analysis.}
 
 \item{M}{A positive integer for the number of knockoffs. The default is 10.}
 }
@@ -21,9 +21,11 @@ Meta-analysis for KnockoffTrio
 }
 \examples{
 data(KnockoffTrio.example)
-dat.ko<-create_knockoff(KnockoffTrio.example$dat.hap,KnockoffTrio.example$pos,M=10)
-window<-data.matrix(KnockoffTrio(KnockoffTrio.example$dat,dat.ko,KnockoffTrio.example$pos))
+knockoff<-create_knockoff(trio.hap=KnockoffTrio.example$trio.hap,
+          duo.hap=KnockoffTrio.example$duo.hap, pos=KnockoffTrio.example$pos, M=10)
+window<-KnockoffTrio(trio=KnockoffTrio.example$trio, trio.ko=knockoff$trio.ko,
+        duo=knockoff$duo, duo.ko=knockoff$duo.ko, pos=KnockoffTrio.example$pos)
 window.list<-list(window,window)
 window.meta<-meta_analysis(window.list,M=10)
-result<-causal_loci(window.meta,M=10,fdr=0.15)
+result<-causal_loci(window.meta,M=10,fdr=0.1)
 }

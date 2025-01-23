@@ -5,34 +5,40 @@
 \title{Calculate KnockoffTrio's feature statistics}
 \usage{
 KnockoffTrio(
-  dat,
-  dat.ko = NA,
+  trio,
+  trio.ko = NULL,
+  duo = NULL,
+  duo.ko = NULL,
   pos,
-  start = NA,
-  end = NA,
+  start = NULL,
+  end = NULL,
   size = c(1, 1000, 5000, 10000, 20000, 50000),
   p_value_only = FALSE,
   adjust_for_cov = FALSE,
-  y = NA,
+  y = NULL,
   chr = "1",
   xchr = FALSE,
-  sex = NA
+  sex = NULL
 )
 }
 \arguments{
-\item{dat}{A 3n*p matrix for the original genotype data, in which n is the number of trios and p is the number of variants. Each trio must consist of father, mother, and offspring (in this order). The genotypes must be coded as 0, 1, or 2. Missing genotypes are not allowed.}
+\item{trio}{A 3n*p matrix for the trio genotype data, in which n is the number of trios and p is the number of variants. Each trio must consist of father, mother, and offspring (in this order). The genotypes must be coded as 0, 1, or 2. Missing genotypes are not allowed.}
 
-\item{dat.ko}{A 3n*p*M array for the knockoff genotype data created by function create_knockoff. M is the number of knockoffs.}
+\item{trio.ko}{A 3n*p*M array for the knockoff trio genotype data created by function create_knockoff. M is the number of knockoffs.}
+
+\item{duo}{A 3m*p matrix for the duo genotype data created by function create_knockoff, in which m is the number of duos and p is the number of variants. Please do not use the original 2m*p duo genotype matrix.}
+
+\item{duo.ko}{A 3m*p*M array for the knockoff duo genotype data created by function create_knockoff. M is the number of knockoffs.}
 
 \item{pos}{A numeric vector of length p for the position of p variants.}
 
-\item{start}{An integer for the first position of sliding windows. If NA, start=min(pos). Only used if you would like to use the same starting position for different cohorts/analyses.}
+\item{start}{An integer for the first position of sliding windows. If NULL, start=min(pos). Only used if you would like to use the same starting position for different cohorts/analyses.}
 
-\item{end}{An integer for the last position of sliding windows. If NA, end=max(pos). Only used if you would like to use the same ending position for different cohorts/analyses.}
+\item{end}{An integer for the last position of sliding windows. If NULL, end=max(pos). Only used if you would like to use the same ending position for different cohorts/analyses.}
 
-\item{size}{A numeric vector for the size(s) of sliding windows when scanning the genome}
+\item{size}{A numeric vector for the size(s) of sliding windows when scanning the genome.}
 
-\item{p_value_only}{A logical value indicating whether to perform the knockoff analysis. When p_value_only is TRUE, only the ACAT-combined p-values are to be calculated for each window. When p_value_only is FALSE, dat.ko is required and KnockoffTrio's feature statistics are to be calculated for each window in addition to the p-values.}
+\item{p_value_only}{A logical value indicating whether to perform the knockoff analysis. When p_value_only is TRUE, only the ACAT-combined p-values are to be calculated for each window. When p_value_only is FALSE, trio.ko or duo.ko is required and KnockoffTrio's feature statistics are to be calculated for each window in addition to the p-values.}
 
 \item{adjust_for_cov}{A logical value indicating whether to adjust for covariates. When adjust_for_cov is TRUE, y is required.}
 
@@ -40,18 +46,44 @@ KnockoffTrio(
 
 \item{chr}{A character for the name of the chromosome, e.g., "1", "2", ..., "22", and "X".}
 
-\item{xchr}{A logical value indicating whether the analysis is for the X chromosome. When xchr is TRUE, the analysis is for the X chromosome and sex is required. When xchr is FALSE, the analysis is for the autosomes.}
+\item{xchr}{A logical value indicating whether the analysis is for the X chromosome. When xchr is TRUE, the analysis is for the X chromosome and sex is required. When xchr is FALSE, the analysis is for the autosomes. The default if FALSE.}
 
 \item{sex}{A numeric vector of length n for the sex of offspring. 0s indicate females and 1s indicate males. Sex is required when xchr is TRUE.}
 }
 \value{
-A data frame for the analysis results. Each row contains the p-values and, if p_value_only is FALSE, KnockoffTrio's feature statistics for a window.
+A data frame for analysis results from KnockoffTrio and FBAT. The data frame contains the following columns if p_value_only is FALSE:
+\describe{
+  \item{chr}{The chromosome number.}
+  \item{start, end}{The start and end position of a window.}
+  \item{actual_start, actual_end}{The position of the first and last variant in a window.}
+  \item{n}{The number of variants in a window.}
+  \item{dir}{The direction of effect of the most significant variant in a window.}
+  \item{w}{The W knockoff feature statistic for a window. Please use function causal_loci to obtain the significance threshold for w at target FDRs.}
+  \item{p}{The ACAT-combined p-value for a window. If a window contains multiple variants (i.e., n>1), ACAT combines FBAT p-values for each variant and a burden FBAT p-value for all variants in the window. If a window contains only one variant (i.e., n=1), the ACAT-combined p-value is equivalent to the FBAT p-value for this variant.}
+  \item{z}{The FBAT z-score for a window. If a window contains multiple variants (i.e., n>1), z is the burden FBAT z-score for all variants in the window. If a window contains only one variant (i.e., n=1), z is the FBAT z-score for this variant.}
+  \item{p.burden}{The FBAT p-value for a window. If a window contains multiple variants (i.e., n>1), p.burden is the burden FBAT p-value for all variants in the window. If a window contains only one variant (i.e., n=1), p.burden is the FBAT p-value for this variant.}
+  \item{kappa, tau}{The two columns are used by function causal_loci for knockoff inference.}
+  \item{p_1, ..., p_M}{The ACAT-combined p-values for M knockoffs.}
+  \item{z_1, ..., z_M}{The FBAT z-scores for M knockoffs.}
+}
 }
 \description{
-Calculate KnockoffTrio's feature statistics using original and knockoff genotype data.
+Calculate KnockoffTrio's feature statistics and FBAT statistics using original and knockoff genotype data.
 }
 \examples{
 data(KnockoffTrio.example)
-dat.ko<-create_knockoff(KnockoffTrio.example$dat.hap,KnockoffTrio.example$pos,M=10)
-window<-KnockoffTrio(KnockoffTrio.example$dat,dat.ko,KnockoffTrio.example$pos)
+knockoff<-create_knockoff(trio.hap=KnockoffTrio.example$trio.hap,
+          duo.hap=KnockoffTrio.example$duo.hap, pos=KnockoffTrio.example$pos, M=10)
+
+#Analysis for both trios and duos
+window<-KnockoffTrio(trio=KnockoffTrio.example$trio, trio.ko=knockoff$trio.ko,
+        duo=knockoff$duo, duo.ko=knockoff$duo.ko, pos=KnockoffTrio.example$pos)
+
+#Analysis for trios only
+window<-KnockoffTrio(trio=KnockoffTrio.example$trio, trio.ko=knockoff$trio.ko,
+        duo=NULL, duo.ko=NULL, pos=KnockoffTrio.example$pos)
+
+#Analysis for duos only
+window<-KnockoffTrio(trio=NULL, trio.ko=NULL,
+        duo=knockoff$duo, duo.ko=knockoff$duo.ko, pos=KnockoffTrio.example$pos)
 }

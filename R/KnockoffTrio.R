@@ -1,32 +1,90 @@
 #' Calculate KnockoffTrio's feature statistics
 #'
-#' Calculate KnockoffTrio's feature statistics using original and knockoff genotype data.
+#' Calculate KnockoffTrio's feature statistics and FBAT statistics using original and knockoff genotype data.
 #'
-#' @param dat A 3n*p matrix for the original genotype data, in which n is the number of trios and p is the number of variants. Each trio must consist of father, mother, and offspring (in this order). The genotypes must be coded as 0, 1, or 2. Missing genotypes are not allowed.
-#' @param dat.ko A 3n*p*M array for the knockoff genotype data created by function create_knockoff. M is the number of knockoffs.
+#' @param trio A 3n*p matrix for the trio genotype data, in which n is the number of trios and p is the number of variants. Each trio must consist of father, mother, and offspring (in this order). The genotypes must be coded as 0, 1, or 2. Missing genotypes are not allowed.
+#' @param trio.ko A 3n*p*M array for the knockoff trio genotype data created by function create_knockoff. M is the number of knockoffs.
+#' @param duo A 3m*p matrix for the duo genotype data created by function create_knockoff, in which m is the number of duos and p is the number of variants. Please do not use the original 2m*p duo genotype matrix.
+#' @param duo.ko A 3m*p*M array for the knockoff duo genotype data created by function create_knockoff. M is the number of knockoffs.
 #' @param pos A numeric vector of length p for the position of p variants.
-#' @param start An integer for the first position of sliding windows. If NA, start=min(pos). Only used if you would like to use the same starting position for different cohorts/analyses.
-#' @param end An integer for the last position of sliding windows. If NA, end=max(pos). Only used if you would like to use the same ending position for different cohorts/analyses.
-#' @param size A numeric vector for the size(s) of sliding windows when scanning the genome
-#' @param p_value_only A logical value indicating whether to perform the knockoff analysis. When p_value_only is TRUE, only the ACAT-combined p-values are to be calculated for each window. When p_value_only is FALSE, dat.ko is required and KnockoffTrio's feature statistics are to be calculated for each window in addition to the p-values.
+#' @param start An integer for the first position of sliding windows. If NULL, start=min(pos). Only used if you would like to use the same starting position for different cohorts/analyses.
+#' @param end An integer for the last position of sliding windows. If NULL, end=max(pos). Only used if you would like to use the same ending position for different cohorts/analyses.
+#' @param size A numeric vector for the size(s) of sliding windows when scanning the genome.
+#' @param p_value_only A logical value indicating whether to perform the knockoff analysis. When p_value_only is TRUE, only the ACAT-combined p-values are to be calculated for each window. When p_value_only is FALSE, trio.ko or duo.ko is required and KnockoffTrio's feature statistics are to be calculated for each window in addition to the p-values.
 #' @param adjust_for_cov A logical value indicating whether to adjust for covariates. When adjust_for_cov is TRUE, y is required.
 #' @param y A numeric vector of length n for the residual Y-Y_hat. Y_hat is the predicted value from the regression model in which the quantitative trait Y is regressed on the covariates. If Y is dichotomous, you may treat Y as quantitative when applying the regression model.
 #' @param chr A character for the name of the chromosome, e.g., "1", "2", ..., "22", and "X".
-#' @param xchr A logical value indicating whether the analysis is for the X chromosome. When xchr is TRUE, the analysis is for the X chromosome and sex is required. When xchr is FALSE, the analysis is for the autosomes.
+#' @param xchr A logical value indicating whether the analysis is for the X chromosome. When xchr is TRUE, the analysis is for the X chromosome and sex is required. When xchr is FALSE, the analysis is for the autosomes. The default if FALSE.
 #' @param sex A numeric vector of length n for the sex of offspring. 0s indicate females and 1s indicate males. Sex is required when xchr is TRUE.
-#' @return A data frame for the analysis results. Each row contains the p-values and, if p_value_only is FALSE, KnockoffTrio's feature statistics for a window.
+#' @return A data frame for analysis results from KnockoffTrio and FBAT. The data frame contains the following columns if p_value_only is FALSE:
+#' \describe{
+#'   \item{chr}{The chromosome number.}
+#'   \item{start, end}{The start and end position of a window.}
+#'   \item{actual_start, actual_end}{The position of the first and last variant in a window.}
+#'   \item{n}{The number of variants in a window.}
+#'   \item{dir}{The direction of effect of the most significant variant in a window.}
+#'   \item{w}{The W knockoff feature statistic for a window. Please use function causal_loci to obtain the significance threshold for w at target FDRs.}
+#'   \item{p}{The ACAT-combined p-value for a window. If a window contains multiple variants (i.e., n>1), ACAT combines FBAT p-values for each variant and a burden FBAT p-value for all variants in the window. If a window contains only one variant (i.e., n=1), the ACAT-combined p-value is equivalent to the FBAT p-value for this variant.}
+#'   \item{z}{The FBAT z-score for a window. If a window contains multiple variants (i.e., n>1), z is the burden FBAT z-score for all variants in the window. If a window contains only one variant (i.e., n=1), z is the FBAT z-score for this variant.}
+#'   \item{p.burden}{The FBAT p-value for a window. If a window contains multiple variants (i.e., n>1), p.burden is the burden FBAT p-value for all variants in the window. If a window contains only one variant (i.e., n=1), p.burden is the FBAT p-value for this variant.}
+#'   \item{kappa, tau}{The two columns are used by function causal_loci for knockoff inference.}
+#'   \item{p_1, ..., p_M}{The ACAT-combined p-values for M knockoffs.}
+#'   \item{z_1, ..., z_M}{The FBAT z-scores for M knockoffs.}
+#' }
 #' @importFrom stats as.dist cutree hclust median pcauchy pnorm princomp
 #' @export
 #' @examples
 #' data(KnockoffTrio.example)
-#' dat.ko<-create_knockoff(KnockoffTrio.example$dat.hap,KnockoffTrio.example$pos,M=10)
-#' window<-KnockoffTrio(KnockoffTrio.example$dat,dat.ko,KnockoffTrio.example$pos)
-KnockoffTrio<-function(dat,dat.ko=NA,pos,start=NA,end=NA,size=c(1,1000,5000,10000,20000,50000),p_value_only=FALSE,adjust_for_cov=FALSE,y=NA,chr="1",xchr=FALSE,sex=NA){
-  if (nrow(dat) %% 3!=0) stop("The number of rows of the original trio matrix must be a multiple of three.")
-  if (xchr & is.na(sex)) stop("Gender information is required if KnockoffTrio is applied to the X chromosome")
-  #if (!all(dat %in% c(0,1,2))) stop("The original trio matrix can only contain 0, 1, or 2.")
-  if (is.na(start)) start<-min(pos)
-  if (is.na(end))  end<-max(pos)
+#' knockoff<-create_knockoff(trio.hap=KnockoffTrio.example$trio.hap,
+#'           duo.hap=KnockoffTrio.example$duo.hap, pos=KnockoffTrio.example$pos, M=10)
+#'
+#' #Analysis for both trios and duos
+#' window<-KnockoffTrio(trio=KnockoffTrio.example$trio, trio.ko=knockoff$trio.ko,
+#'         duo=knockoff$duo, duo.ko=knockoff$duo.ko, pos=KnockoffTrio.example$pos)
+#'
+#' #Analysis for trios only
+#' window<-KnockoffTrio(trio=KnockoffTrio.example$trio, trio.ko=knockoff$trio.ko,
+#'         duo=NULL, duo.ko=NULL, pos=KnockoffTrio.example$pos)
+#'
+#' #Analysis for duos only
+#' window<-KnockoffTrio(trio=NULL, trio.ko=NULL,
+#'         duo=knockoff$duo, duo.ko=knockoff$duo.ko, pos=KnockoffTrio.example$pos)
+KnockoffTrio<-function(trio, trio.ko=NULL, duo=NULL, duo.ko=NULL, pos, start=NULL, end=NULL, size=c(1,1000,5000,10000,20000,50000), p_value_only=FALSE, adjust_for_cov=FALSE, y=NULL, chr="1", xchr=FALSE, sex=NULL){
+  if (!is.null(trio)) {
+    if (nrow(trio) %% 3!=0) stop("The number of rows of the trio genotype matrix must be a multiple of three.")
+  }
+  if (!is.null(duo)) {
+    if (nrow(duo) %% 3!=0) stop("The number of rows of the duo genotype matrix must be a multiple of three due to FBAT. Please use the duo genotype matrix generated from the create_knockoff function.")
+  }
+  if (adjust_for_cov & is.null(y)) stop("When adjust_for_cov is TRUE, y cannot be NULL.")
+  if (!is.null(trio) & !is.null(duo)){
+    dat<-rbind(trio, duo)
+    if (!p_value_only){
+      if (is.null(trio.ko) | is.null(duo.ko)) stop("The trio and duo knockoff data cannot be NULL if knockoff analysis is to be performed on both trio and duo data. Please use the create_knockoff function to generate knockoff data.")
+      if (dim(trio.ko)[3]!=dim(duo.ko)[3]) stop("The trio and duo knockoff data must have the same number of knockoffs.")
+      M<-dim(trio.ko)[3]
+      dat.ko<-array(dim=c(dim(dat), M))
+      for (i in 1:M) dat.ko[,,i]<-rbind(trio.ko[,,i,drop=F], duo.ko[,,i,drop=F])
+    } else dat.ko<-NULL
+    rm(trio)
+    rm(trio.ko)
+    rm(duo)
+    rm(duo.ko)
+  } else if (!is.null(trio)){
+    dat<-trio
+    dat.ko<-trio.ko
+    rm(trio)
+    rm(trio.ko)
+  } else if (!is.null(duo)){
+    dat<-duo
+    dat.ko<-duo.ko
+    rm(duo)
+    rm(duo.ko)
+  }
+  #if (nrow(dat) %% 3!=0) stop("The number of rows of the original trio matrix must be a multiple of three.")
+  if (xchr & is.null(sex)) stop("Gender information is required if KnockoffTrio is applied to the X chromosome.")
+  if (is.null(start)) start<-min(pos)
+  if (is.null(end))  end<-max(pos)
 
   n<-nrow(dat)/3 #number of trios
   nsnp<-ncol(dat)
@@ -159,8 +217,8 @@ KnockoffTrio<-function(dat,dat.ko=NA,pos,start=NA,end=NA,size=c(1,1000,5000,1000
 
   return(window)
 }
-fbat<-function(dat,adjust_for_covariates=FALSE,y=NA,dosage=FALSE,dat1=NA,xchr=FALSE,sex=NA){
-  #if (xchr & is.na(sex)) stop("Gender information is required if FBAT is applied to the X chromosome")
+fbat<-function(dat,adjust_for_cov=FALSE,y=NULL,dosage=FALSE,dat1=NULL,xchr=FALSE,sex=NULL){
+  #if (xchr & is.null(sex)) stop("Gender information is required if FBAT is applied to the X chromosome")
   if (is.null(ncol(dat))) dat<-as.matrix(dat)
   n<-nrow(dat)/3
   index_dad<-seq(1,(3*n),3) #index for parent1
@@ -169,27 +227,27 @@ fbat<-function(dat,adjust_for_covariates=FALSE,y=NA,dosage=FALSE,dat1=NA,xchr=FA
   if (!xchr){
     if (dosage==FALSE) Z<-dat[index_off,]-(dat[index_dad,]+dat[index_mom,])/2 else Z<-dat1[index_off,,,drop=FALSE]-(dat1[index_dad,,,drop=FALSE]+dat1[index_mom,,,drop=FALSE])/2
   } else Z<-xcontribution(dat,dat1,dosage,sex)
-  tat<-pcontribution(dat,dat1,dosage,xchr,sex)
-  Z.pa<-tat$Z.pa
-  Z.ma<-tat$Z.ma
-  if (adjust_for_covariates){
+  # tat<-pcontribution(dat,dat1,dosage,xchr,sex)
+  # Z.pa<-tat$Z.pa
+  # Z.ma<-tat$Z.ma
+  if (adjust_for_cov){
     Z<-sweep(Z,1,y,'*')
-    Z.pa<-sweep(Z.pa,1,y,'*')
-    Z.ma<-sweep(Z.ma,1,y,'*')
+    # Z.pa<-sweep(Z.pa,1,y,'*')
+    # Z.ma<-sweep(Z.ma,1,y,'*')
   }
   additive<-colSums(Z)/sqrt(colSums(Z^2)) #if dosage=T, dim=c(nsnp,M)
-  paternal<-colSums(Z.pa)/sqrt(colSums(Z.pa^2)) #if dosage=T, dim=c(nsnp,M)
-  maternal<-colSums(Z.ma)/sqrt(colSums(Z.ma^2)) #if dosage=T, dim=c(nsnp,M)
+  # paternal<-colSums(Z.pa)/sqrt(colSums(Z.pa^2)) #if dosage=T, dim=c(nsnp,M)
+  # maternal<-colSums(Z.ma)/sqrt(colSums(Z.ma^2)) #if dosage=T, dim=c(nsnp,M)
   additive[is.na(additive)]<-0
-  paternal[is.na(paternal)]<-0
-  maternal[is.na(maternal)]<-0
+  # paternal[is.na(paternal)]<-0
+  # maternal[is.na(maternal)]<-0
   out<-list()
   out$additive<-additive
-  out$paternal<-paternal
-  out$maternal<-maternal
+  # out$paternal<-paternal
+  # out$maternal<-maternal
   out$Z<-Z
-  out$Z.pa<-Z.pa
-  out$Z.ma<-Z.ma
+  # out$Z.pa<-Z.pa
+  # out$Z.ma<-Z.ma
   return (out)
 }
 fbat_set<-function(W,V,ind){
@@ -200,7 +258,7 @@ fbat_set<-function(W,V,ind){
     return (unname(s1/sqrt(s2)))
   } else return(NA)
 }
-pcontribution <- function(dat,dat1=NA,dosage=FALSE,xchr=FALSE,sex=NA){
+pcontribution <- function(dat,dat1=NULL,dosage=FALSE,xchr=FALSE,sex=NULL){
   n.row <- nrow(dat)
   dad <- dat[seq.int(1, n.row, 3),, drop=FALSE]
   mom <- dat[seq.int(2, n.row, 3),, drop=FALSE]
@@ -340,7 +398,7 @@ pcontribution <- function(dat,dat1=NA,dosage=FALSE,xchr=FALSE,sex=NA){
     return(out)
   }
 }
-xcontribution <- function(dat,dat1=NA,dosage=FALSE,sex=NA){
+xcontribution <- function(dat,dat1=NULL,dosage=FALSE,sex=NULL){
   #sex: gender info for the offspring, 0 for females and 1 for males
   #Only knockoffs of mothers are required
   n.row <- nrow(dat)
